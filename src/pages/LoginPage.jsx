@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Helmet } from 'react-helmet';
 import { motion } from 'framer-motion';
@@ -23,6 +22,16 @@ const LoginPage = () => {
     aadhaar: '',
     password: ''
   });
+
+  const formatAadhaar = (digits) => {
+    if (!digits) return '';
+    return digits.match(/.{1,4}/g)?.join(' ') ?? digits;
+  };
+
+  const handleAadhaarChange = (e) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 12);
+    setFormData((s) => ({ ...s, aadhaar: digits }));
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -104,12 +113,13 @@ const LoginPage = () => {
             id="aadhaar"
             type="text"
             placeholder="XXXX XXXX XXXX"
-            value={formData.aadhaar}
-            onChange={(e) => setFormData({ ...formData, aadhaar: e.target.value })}
+            value={formatAadhaar(formData.aadhaar)}
+            onChange={handleAadhaarChange}
             required
-            maxLength={12}
+            maxLength={14}
             className="bg-white text-black border-black/20 
               placeholder:text-gray-400 focus:border-black focus:ring-black/10"
+            inputMode="numeric"
           />
         </div>
 

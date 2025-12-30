@@ -29,13 +29,36 @@ const RegisterPage = () => {
   const [verifying, setVerifying] = useState(false);
   const logoUrl = "https://horizons-cdn.hostinger.com/a6afdcf9-aaa7-4281-ba79-be0f31c772d0/384adb0a13bc13709264589f14f2ae52.jpg";
 
+
+  const formatAadhaar = (digits) => {
+    if (!digits) return '';
+    return digits.match(/.{1,4}/g)?.join(' ') ?? digits;
+  };
+
+
+  const formatPhoneDisplay = (digits) => {
+    if (!digits) return '';
+
+    return digits.replace(/(\d{5})(\d{5})?/, (_, a, b) => (b ? `${a} ${b}` : a));
+  };
+
+  const handleAadhaarChange = (e) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 12);
+    setFormData((s) => ({ ...s, aadhaar: digits }));
+  };
+
+  const handlePhoneChange = (e) => {
+    const digits = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setFormData((s) => ({ ...s, phone: digits }));
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const mockOtp = Math.floor(100000 + Math.random() * 900000).toString();
     setGeneratedOtp(mockOtp);
     setStep(2);
 
-    // themed toast (uses app toast variants)
+
     toast({
       title: "OTP Sent",
       description: `Mock OTP: ${mockOtp} (for demo)`,
@@ -56,7 +79,6 @@ const RegisterPage = () => {
         variant: "success"
       });
 
-      // small delay so toast shows before navigation
       setTimeout(() => {
         setVerifying(false);
         navigate(newUser.role === 'admin' ? '/admin' : '/dashboard');
@@ -71,7 +93,7 @@ const RegisterPage = () => {
     }
   };
 
-  // auto-verify when user completes 6 digits on step 2
+
   useEffect(() => {
     if (step === 2 && generatedOtp && otp.length === 6 && !verifying) {
       handleVerifyOtp();
@@ -163,15 +185,21 @@ const RegisterPage = () => {
 
                   <div>
                     <Label htmlFor="phone" className="text-white">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="+91 XXXXX XXXXX"
-                      value={formData.phone}
-                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                      required
-                      className="bg-white text-black border-black/20 placeholder:text-gray-400 focus:border-black focus:ring-black/10"
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 select-none">
+                        +91
+                      </span>
+                      <Input
+                        id="phone"
+                        type="tel"
+                        placeholder="XXXXX XXXXX"
+                        value={formatPhoneDisplay(formData.phone)}
+                        onChange={handlePhoneChange}
+                        required
+                        className="pl-12 bg-white text-black border-black/20 placeholder:text-gray-400 focus:border-black focus:ring-black/10"
+                        inputMode="numeric"
+                      />
+                    </div>
                   </div>
 
                   <div>
@@ -180,11 +208,12 @@ const RegisterPage = () => {
                       id="aadhaar"
                       type="text"
                       placeholder="XXXX XXXX XXXX"
-                      value={formData.aadhaar}
-                      onChange={(e) => setFormData({ ...formData, aadhaar: e.target.value })}
+                      value={formatAadhaar(formData.aadhaar)}
+                      onChange={handleAadhaarChange}
                       required
-                      maxLength={12}
+                      maxLength={14} /* 12 digits + 2 spaces display */
                       className="bg-white text-black border-black/20 placeholder:text-gray-400 focus:border-black focus:ring-black/10"
+                      inputMode="numeric"
                     />
                   </div>
                 </div>
@@ -240,7 +269,7 @@ const RegisterPage = () => {
                           newOtp[index] = value;
                           setOtp(newOtp.join(''));
 
-                          // auto focus next
+      
                           if (value) {
                             const next = e.target.nextElementSibling;
                             if (next) next.focus();
