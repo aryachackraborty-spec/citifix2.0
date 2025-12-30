@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { saveUser } from '@/utils/storage';
-import { ArrowLeft } from 'lucide-react';
 import Beams from '../components/Background';
 import Navbar from '../components/Navbar';
 
@@ -27,6 +26,7 @@ const RegisterPage = () => {
   });
   const [otp, setOtp] = useState('');
   const [generatedOtp, setGeneratedOtp] = useState('');
+  const [verifying, setVerifying] = useState(false);
   const logoUrl = "https://horizons-cdn.hostinger.com/a6afdcf9-aaa7-4281-ba79-be0f31c772d0/384adb0a13bc13709264589f14f2ae52.jpg";
 
   const handleSubmit = (e) => {
@@ -34,41 +34,59 @@ const RegisterPage = () => {
     const mockOtp = Math.floor(100000 + Math.random() * 900000).toString();
     setGeneratedOtp(mockOtp);
     setStep(2);
-    
+
+    // themed toast (uses app toast variants)
     toast({
-      title: "OTP Sent! 📱",
-      description: `Mock OTP: ${mockOtp} (for demo purposes)`
+      title: "OTP Sent",
+      description: `Mock OTP: ${mockOtp} (for demo)`,
+      variant: "default"
     });
   };
 
-  const handleVerifyOtp = () => {
+  const handleVerifyOtp = async () => {
+    if (verifying) return;
+    setVerifying(true);
     if (otp === generatedOtp) {
       const newUser = saveUser(formData);
       login(newUser);
-      
+
       toast({
-        title: "Registration successful! 🎉",
-        description: "Welcome to CITIFIX"
+        title: "Registration Successful",
+        description: "Welcome to CITIFIX",
+        variant: "success"
       });
-      
-      navigate(newUser.role === 'admin' ? '/admin' : '/dashboard');
+
+      // small delay so toast shows before navigation
+      setTimeout(() => {
+        setVerifying(false);
+        navigate(newUser.role === 'admin' ? '/admin' : '/dashboard');
+      }, 300);
     } else {
+      setVerifying(false);
       toast({
         title: "Invalid OTP",
-        description: "Please check and try again",
+        description: "The code you entered is incorrect. Please try again.",
         variant: "destructive"
       });
     }
   };
 
+  // auto-verify when user completes 6 digits on step 2
+  useEffect(() => {
+    if (step === 2 && generatedOtp && otp.length === 6 && !verifying) {
+      handleVerifyOtp();
+    }
+  }, [otp, step, generatedOtp, verifying]);
+
   useEffect(() => {
     if (step === 2 && !generatedOtp) {
-        const mockOtp = Math.floor(100000 + Math.random() * 900000).toString();
-        setGeneratedOtp(mockOtp);
-        toast({
-            title: "Your new OTP! 📱",
-            description: `Mock OTP: ${mockOtp} (for demo purposes)`
-        });
+      const mockOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      setGeneratedOtp(mockOtp);
+      toast({
+        title: "OTP Generated",
+        description: `Mock OTP: ${mockOtp} (for demo)`,
+        variant: "default"
+      });
     }
   }, [step, generatedOtp, toast]);
 
@@ -78,7 +96,7 @@ const RegisterPage = () => {
         <title>Register - CITIFIX</title>
         <meta name="description" content="Create your CITIFIX account and start reporting civic issues in your community." />
       </Helmet>
-      
+
       <div className="relative min-h-screen flex items-center pt-32 justify-center p-4 bg-black text-black overflow-hidden">
         <div className="fixed inset-0 z-0">
           <Beams
@@ -101,8 +119,6 @@ const RegisterPage = () => {
           className="relative z-10 w-full max-w-md"
         >
           <div className="bg-gradient-to-r from-white/20 to-white/30 rounded-3xl shadow-[0_30px_80px_-30px_rgba(255,255,255,0.25)] p-8 border border-black/10">
-            
-       
             <div className="flex items-center justify-center gap-2 mb-6">
               <img src={logoUrl} alt="CITIFIX Logo" className="w-10 h-10 rounded-lg" />
               <span className="text-2xl font-bold tracking-wide text-white/90">
@@ -110,7 +126,6 @@ const RegisterPage = () => {
               </span>
             </div>
 
-            
             <h2 className="text-3xl font-bold text-white text-center mb-2">
               {step === 1 ? 'Create Account' : 'Verify Aadhaar'}
             </h2>
@@ -120,7 +135,6 @@ const RegisterPage = () => {
 
             {step === 1 ? (
               <form onSubmit={handleSubmit} className="space-y-4">
-                
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="name" className="text-white">Full Name</Label>
@@ -175,7 +189,6 @@ const RegisterPage = () => {
                   </div>
                 </div>
 
-    
                 <div>
                   <Label htmlFor="password" className="text-white">Password</Label>
                   <Input
@@ -208,31 +221,57 @@ const RegisterPage = () => {
               </form>
             ) : (
               <div className="space-y-5">
-                <div>
-                  <Label htmlFor="otp" className="text-white">Enter OTP</Label>
-                  <Input
-                    id="otp"
-                    type="text"
-                    placeholder="6-digit OTP"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    maxLength={6}
-                    className="bg-white text-black border-black/20 placeholder:text-gray-400 focus:border-black focus:ring-black/10"
-                  />
-                  <p className="text-sm text-gray-300 mt-2">
-                    Demo OTP: {generatedOtp}
+                <div className="space-y-3">
+                  <Label className="text-white text-center block">
+                    Enter 6-digit OTP
+                  </Label>
+
+                  <div className="flex justify-center gap-2">
+                    {Array.from({ length: 6 }).map((_, index) => (
+                      <input
+                        key={index}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={otp[index] || ''}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/, '');
+                          const newOtp = otp.split('');
+                          newOtp[index] = value;
+                          setOtp(newOtp.join(''));
+
+                          // auto focus next
+                          if (value) {
+                            const next = e.target.nextElementSibling;
+                            if (next) next.focus();
+                          }
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Backspace' && !otp[index]) {
+                            const prev = e.target.previousElementSibling;
+                            if (prev) prev.focus();
+                          }
+                        }}
+                        className="
+                          w-12 h-14 text-center text-xl font-bold
+                          rounded-xl
+                          bg-white/90 text-black
+                          border border-black/20
+                          focus:outline-none focus:ring-2 focus:ring-white/50
+                          shadow-inner
+                        "
+                      />
+                    ))}
+                  </div>
+
+                  <p className="text-sm text-gray-300 text-center">
+                    Demo OTP: <span className="font-semibold">{generatedOtp}</span>
                   </p>
                 </div>
 
-                <Button 
-                  onClick={handleVerifyOtp} 
-                  className="w-full hover:bg-white/70 hover:text-black bg-black text-white"
-                >
-                  Verify & Register
-                </Button>
-
-                <Button 
-                  variant="outline" 
+                {/* Verify button removed — auto-verify runs when 6 digits complete */}
+                <Button
+                  variant="outline"
                   onClick={() => {
                     setStep(1);
                     setOtp('');
@@ -245,7 +284,6 @@ const RegisterPage = () => {
               </div>
             )}
 
-  
             <p className="text-center mt-6 text-sm text-white">
               Already have an account?{' '}
               <button
